@@ -1,0 +1,127 @@
+name: Quality Gates
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16' 
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier check
+        run: npm run prettier:check
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16' 
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run unit tests
+        run: npm run test:ci
+
+  code-analysis:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16' 
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run code analysis
+        run: npm run lint && npm run prettier:check
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16' 
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the application
+        run: npm run build --prod
+
+      - name: Start the application
+        run: npm run serve:sw & 
+        
+      - name: Wait for the application to start
+        run: sleep 15 
+
+      - name: Run E2E tests
+        run: npm run cypress:run
+        
+  build-artifact:
+    runs-on: ubuntu-latest
+    needs: e2e
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+  
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16' 
+  
+      - name: Install dependencies
+        run: npm install
+  
+      - name: Build the application
+        run: npm run build --prod
+  
+      - name: Create zip file of build artifacts
+        run: zip -r HenryArpon-build-artifacts.zip dist/ 
+  
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: HenryArpon-build-artifacts
+          path: HenryArpon-build-artifacts.zip
+
+  HenryArpon_Completed_the_pipeline:
+    runs-on: ubuntu-latest
+    needs: [lint, test, code-analysis, e2e]
+    steps:
+      - name: Print completion message
+        run: echo "Henry Completed Testing and Build"
